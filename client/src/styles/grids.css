@@ -1,0 +1,71 @@
+/* Canvas Backgrounds & Grids */
+
+/* Grid Types */
+.bg-grid-dot {
+    background-size: 20px 20px;
+    background-image: radial-gradient(#ccc 1px, transparent 1px);
+}
+
+.bg-grid-graph {
+    background-size: 20px 20px;
+    background-image:
+        linear-gradient(to right, #e5e5e5 1px, transparent 1px),
+        linear-gradient(to bottom, #e5e5e5 1px, transparent 1px);
+}
+
+.bg-grid-line {
+    background-size: 100% 30px;
+    background-image: linear-gradient(to bottom, #e5e5e5 1px, transparent 1px);
+}
+
+.bg-grid-iso {
+    background-image: inherit;
+    /* Too complex for simple CSS in one go, skipping for cleaner MVP or SVG usage later */
+    background:
+        conic-gradient(from 90deg at 1px 1px,
+            #e5e5e5 90deg, transparent 0) 0 0 / 20px 20px;
+}
+
+/* Themes */
+.theme-standard {
+    background-color: #ffffff;
+}
+
+.bg-grid-dot.theme-standard {
+    background-image: radial-gradient(#ccc 1px, transparent 1px);
+}
+
+.bg-grid-graph.theme-standard {
+    background-image:
+        linear-gradient(to right, #e0e0e0 1px, transparent 1px),
+        linear-gradient(to bottom, #e0e0e0 1px, transparent 1px);
+}
+
+.theme-darkprint {
+    background-color: #1a1b1e;
+}
+
+.bg-grid-dot.theme-darkprint {
+    background-image: radial-gradient(#333 1px, transparent 1px);
+}
+
+.bg-grid-graph.theme-darkprint {
+    background-image:
+        linear-gradient(to right, #333 1px, transparent 1px),
+        linear-gradient(to bottom, #333 1px, transparent 1px);
+}
+
+.theme-blueprint {
+    background-color: #0066cc;
+}
+
+.bg-grid-graph.theme-blueprint {
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+}
+
+.theme-brown {
+    background-color: #d2b48c;
+    /* approximate brown paper */
+}
