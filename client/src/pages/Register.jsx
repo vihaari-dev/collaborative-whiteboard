@@ -1,5 +1,5 @@
 import { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 
 const Register = () => {
@@ -10,6 +10,10 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
     const { register } = useContext(AuthContext);
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const from = location.state?.from?.pathname || location.state?.from?.search ? 
+                 (location.state?.from?.pathname + (location.state?.from?.search || '')) : '/';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -17,7 +21,7 @@ const Register = () => {
         setLoading(true);
         try {
             await register({ name, email, password });
-            navigate('/');
+            navigate(from, { replace: true });
         } catch (err) {
             const msg = err?.response?.data?.message || 'Registration failed. Please try again.';
             setError(msg);

@@ -12,7 +12,8 @@ import { useLocation } from 'react-router-dom';
 // Redirects to /login if not authenticated
 const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
-  return user ? children : <Navigate to="/login" replace />;
+  const location = useLocation();
+  return user ? children : <Navigate to="/login" replace state={{ from: location }} />;
 };
 
 // Redirects logged-in users away from /login and /register
