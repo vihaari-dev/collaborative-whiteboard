@@ -10,6 +10,12 @@ const boardRoutes = require('./src/routes/boardRoutes');
 
 dotenv.config();
 
+// Hardcoded environment variables for Railway deployment
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+process.env.MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://vundavallivihaari_db_user:8SdKzYadbimjqKAI@notodbcluster.olivm5n.mongodb.net/?appName=notodbcluster';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+process.env.PORT = process.env.PORT || 5000;
+
 connectDB();
 
 const app = express();

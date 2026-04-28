@@ -25,6 +25,7 @@
 \usepackage{array}              % Enhanced column formatting
 \usepackage{caption}            % Caption customisation
 \usepackage{enumitem}           % List formatting
+\usepackage{float}              % For [H] absolute figure placement
 
 % ---- R3: Placeholder identity commands (edit once) ----------
 \newcommand{\projecttitle}{<Title of the Project>}
@@ -68,128 +69,10 @@
 % ---- R4: Front matter — Roman numeral pagination -----------
 \pagenumbering{roman}
 
-% ============================================================
-% 1. COVER PAGE  (Title Page)
-% ============================================================
-\begin{titlepage}
-  \centering
-  \vspace*{1cm}
 
-  % Uncomment and supply the correct filename for the college logo:
-  % \includegraphics[width=3cm]{cvr_logo.png}\\[0.5cm]
 
-  {\large \textbf{Real-time/Field-Based Research Project Report}}\\[0.4cm]
-  {\large On}\\[0.4cm]
-  {\Large \textbf{\projecttitle}}\\[1.2cm]
 
-  A dissertation submitted to the\\
-  Jawaharlal Nehru Technological University, Hyderabad\\
-  in partial fulfillment of the requirement for the award of a degree of\\[0.6cm]
 
-  {\large \textbf{BACHELOR OF TECHNOLOGY}}\\
-  {\large \textbf{IN}}\\
-  {\large \textbf{COMPUTER SCIENCE AND ENGINEERING}}\\[1cm]
-
-  Submitted by\\[0.4cm]
-  \textbf{\studentOne}\\[0.2cm]
-  \textbf{\studentTwo}\\[0.2cm]
-  \textbf{\studentThree}\\[1cm]
-
-  Department of Computer Science and Engineering\\[0.6cm]
-
-  {\Large \textbf{CVR COLLEGE OF ENGINEERING}}\\[0.3cm]
-  (An UGC Autonomous Institution, Affiliated to JNTUH,\\
-  Accredited by NBA, and NAAC)\\
-  Vastunagar, Mangalpalli (V), Ibrahimpatnam (M),\\
-  Ranga Reddy (Dist.) -- 501510, Telangana State.\\[0.8cm]
-
-  {\large \textbf{2025--26}}
-
-  \vfill
-\end{titlepage}
-
-% ============================================================
-% 2. CERTIFICATE
-% ============================================================
-\newpage
-\thispagestyle{fancy}
-\begin{center}
-
-  % Uncomment for college logo:
-  % \includegraphics[width=3cm]{cvr_logo.png}\\[0.4cm]
-
-  {\Large \textbf{CVR COLLEGE OF ENGINEERING}}\\[0.2cm]
-  (An UGC Autonomous Institution, Affiliated to JNTUH,\\
-  Accredited by NBA, and NAAC)\\
-  Vastunagar, Mangalpalli (V), Ibrahimpatnam (M),\\
-  Ranga Reddy (Dist.) -- 501510, Telangana State.\\[0.6cm]
-
-  {\large \textbf{DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}}\\[0.6cm]
-
-  {\Large \textbf{CERTIFICATE}}\\[0.8cm]
-\end{center}
-
-This is to certify that the project work entitled \textbf{``\projecttitle''} is being submitted by \textbf{\studentOne}, \textbf{\studentTwo}, and \textbf{\studentThree} in partial fulfillment of the requirement for the award of the degree of \textbf{Bachelor of Technology} in \textbf{Computer Science and Engineering}, during the academic year 2025--2026.
-
-\vspace{3cm}
-
-\noindent
-\begin{minipage}[t]{0.45\textwidth}
-  \centering
-  \rule{5cm}{0.4pt}\\
-  \textbf{Professor-in-charge RFP}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.45\textwidth}
-  \centering
-  \rule{5cm}{0.4pt}\\
-  \textbf{Professor and Head, CSE}\\
-  (Dr.\ A.\ Vani Vathsala)
-\end{minipage}
-
-\vfill
-
-% ============================================================
-% 3. DECLARATION
-% ============================================================
-\newpage
-\thispagestyle{fancy}
-\begin{center}
-  {\Large \textbf{DECLARATION}}\\[1cm]
-\end{center}
-
-I hereby declare that this project report titled \textbf{``\projecttitle''} submitted to the Department of Computer Science and Engineering, CVR College of Engineering, is a record of original work done by me. The information and data given in the report is authentic to the best of my knowledge. This Real Time/Field-Based Research Project report is not submitted to any other university or institution for the award of any degree or diploma or published at any time before.
-
-\vspace{2cm}
-
-\noindent
-\textbf{Date:} \submissiondate
-
-\noindent
-\textbf{Place:} \submissionplace
-
-\vspace{1.5cm}
-
-\noindent
-\studentOne\\[0.6cm]
-\studentTwo\\[0.6cm]
-\studentThree
-
-\vfill
-
-% ============================================================
-% 4. ACKNOWLEDGEMENT
-% ============================================================
-\chapter*{ACKNOWLEDGEMENT}
-\addcontentsline{toc}{chapter}{Acknowledgement}
-
-We would like to express our sincere gratitude to CVR College of Engineering and the Department of Computer Science and Engineering for providing us with the opportunity to undertake this Real-time/Field-Based Research Project. We are deeply indebted to our project guide and the Professor-in-charge RFP for their invaluable guidance, constant encouragement, and constructive criticism throughout the course of this project work. Their technical insights and unwavering support were instrumental in shaping the direction and quality of this project.
-
-We extend our heartfelt thanks to the Head of the Department, Dr.\ A.\ Vani Vathsala, for her consistent support and for ensuring the availability of all necessary facilities and infrastructure required for the successful completion of this project. Her leadership and vision have fostered an environment of academic excellence within the department that greatly facilitated our work.
-
-We are grateful to the Principal and the management of CVR College of Engineering for their encouragement and for providing us with an environment conducive to learning and research. We also wish to acknowledge the contribution of all faculty members of the Department of Computer Science and Engineering who have directly or indirectly helped us in the successful completion of this project through their lectures, laboratory sessions, and informal discussions.
-
-Finally, we express our sincere thanks to our families and friends for their unwavering moral support and encouragement throughout the duration of this project. Their patience and understanding during the demanding phases of development and testing were invaluable.
 
 % ============================================================
 % 5. ABSTRACT
@@ -490,8 +373,7 @@ The user requirements capture both the functional and non-functional expectation
 
 This chapter presents the detailed system design of the Collaborative Whiteboard Application. It covers the overall system architecture, the key algorithms and methods employed, the UML diagrams that model the structural and behavioural aspects of the system, and the datasets and technology stack used during development.
 
-\section*{4.0\hspace{1em}PROPOSED SYSTEM ARCHITECTURE}
-\addcontentsline{toc}{section}{4.0 Proposed System Architecture}
+\section{PROPOSED SYSTEM ARCHITECTURE}
 
 The proposed system follows a three-tier client-server architecture that cleanly separates the presentation layer, the business logic layer, and the data access layer. This separation of concerns ensures maintainability, testability, and scalability across all components of the application.
 
@@ -501,19 +383,49 @@ The \textbf{Business Logic Layer} (back-end) is implemented as a Node.js Express
 
 The \textbf{Data Access Layer} uses MongoDB as the primary database, accessed through the Mongoose ODM. In the current development configuration, an ephemeral in-memory MongoDB instance is provisioned automatically via the mongodb-memory-server package, eliminating the need for a local MongoDB installation. The Board schema stores canvas elements as a top-level array, PDF annotations as a per-page map (\texttt{annotations: Object}), notebook pages as a separate per-page map (\texttt{canvasPages: Object}), voice notes as an array of metadata objects, and the document URL as a string reference to the uploaded file in the server's static \texttt{uploads/} directory.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{System Architecture Diagram Description:}\\[0.3cm]
-  The architecture comprises three horizontal tiers connected by labelled arrows indicating data flow:
-  \begin{enumerate}[nosep, leftmargin=1.5em]
-    \item \textbf{Client Tier (Browser):} Contains the React SPA with sub-modules: \texttt{Pages} (Dashboard, StandardBoard, DocumentBoard, MemoryBoard), \texttt{Components} (CanvasLayer, LiveCursors, DocumentViewer, VoiceNotesLayer), \texttt{Hooks} (useWhiteboardLogic, useCanvasTransform, useVoiceRecorder), and \texttt{Services} (api.js $\rightarrow$ Axios HTTP, socket.js $\rightarrow$ Socket.IO Client). Two outbound arrows leave this tier: one labelled ``REST API (HTTP/JSON)'' connecting to the Server Tier, and another labelled ``WebSocket (Socket.IO)'' connecting to the Server Tier's Socket.IO module.
-    \item \textbf{Server Tier (Node.js):} Contains \texttt{Express.js} with sub-modules: \texttt{Routes} (authRoutes, boardRoutes), \texttt{Controllers} (authController, boardController), \texttt{Middleware} (authMiddleware with JWT verify, uploadMiddleware with Multer), and \texttt{Socket.IO Server} (room management, draw-stroke broadcast, cursor-move broadcast). An outbound arrow labelled ``Mongoose ODM'' connects to the Data Tier. A side arrow labelled ``Static Files'' points to the \texttt{uploads/} directory for PDF and audio storage.
-    \item \textbf{Data Tier (MongoDB):} Contains two collections: \texttt{Users} (name, email, hashedPassword, timestamps) and \texttt{Boards} (user ref, title, mode, elements array, documentUrl, annotations map, canvasPages map, voiceNotes array, collaborators array, timestamps).
-  \end{enumerate}
-  }}
+  \includegraphics[width=\textwidth]{images/4.1.jpeg}
   \caption{Proposed System Architecture}
-  \label{fig:4.0}
+  \label{fig:4.1}
+\end{figure}
+
+This section presents the UML diagrams that model the structural and behavioural aspects of the Collaborative Whiteboard Application. Each diagram is described in sufficient detail to convey the complete structure and interactions.
+
+\section{Use Case Diagram}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/4.2.jpeg}
+  \caption{Use Case Diagram}
+  \label{fig:4.2}
+\end{figure}
+
+\section{Class Diagram}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/4.3.jpeg}
+  \caption{Class Diagram}
+  \label{fig:4.3}
+\end{figure}
+
+\section{Activity Diagram}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/4.4.jpeg}
+  \caption{Activity Diagram --- Real-Time Collaborative Drawing}
+  \label{fig:4.4}
+\end{figure}
+
+\section{Sequence Diagram}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/4.5.jpeg}
+  \caption{Sequence Diagram --- Stroke Drawing and Synchronisation}
+  \label{fig:4.5}
 \end{figure}
 
 \section{PROPOSED METHODS/ALGORITHMS}
@@ -535,90 +447,6 @@ The authentication system implements a stateless token-based flow using JSON Web
 \subsection{Socket.IO Room-Based Collaboration}
 
 Real-time collaboration is managed through Socket.IO's room abstraction. When a user opens a collaboration link, the client connects to the Socket.IO server and emits a \texttt{join-room} event with the room identifier. The server maintains an in-memory \texttt{rooms} dictionary where each room tracks its connected sockets (Set), user metadata (Map of socket ID to \{id, name, colour, cursor\}), and a rolling colour index. Upon joining, the server assigns the new user a random name (combining adjectives and nouns) and a colour from an eight-entry palette, then broadcasts a \texttt{user-joined} event to all other room members. Drawing strokes are relayed via \texttt{draw-stroke} events (server rebroadcasts to all room members except the sender), and cursor positions are relayed via \texttt{cursor-move} events with a client-side throttle of 50ms. Upon disconnection, the user is removed from the room state, and a \texttt{user-left} event is broadcast. Empty rooms are automatically cleaned up from memory.
-
-\section{CLASS / USE CASE / ACTIVITY / SEQUENCE DIAGRAMS}
-
-This section presents the UML diagrams that model the structural and behavioural aspects of the Collaborative Whiteboard Application. Each diagram is described in sufficient detail to convey the complete structure and interactions.
-
-\subsection{Use Case Diagram}
-
-\begin{figure}[htbp]
-  \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{Use Case Diagram Description:}\\[0.2cm]
-  The diagram contains two actors positioned on the left: \textbf{Authenticated User} and \textbf{Guest User}. A system boundary rectangle labelled ``Collaborative Whiteboard Application'' encloses the following use cases:
-  \begin{itemize}[nosep, leftmargin=1.5em]
-    \item \textbf{Guest User} connects to: ``Join Collaboration via Link'' which includes $\ll$include$\gg$ ``Draw on Canvas'', ``View Live Cursors'', and ``Share Link''.
-    \item \textbf{Authenticated User} connects to: ``Register Account'', ``Login'', ``View Dashboard'', ``Create New Board'' (which extends to two sub-use-cases: ``Standard Canvas'' and ``Document Board''), ``Open Board'', ``Draw on Canvas'', ``Upload PDF Document'', ``Annotate PDF Pages'', ``Record Voice Note'', ``Play Voice Note'', ``Delete Voice Note'', ``Save Board State'', ``Undo/Redo Actions'', ``Zoom/Pan Canvas'', ``Change Grid Settings'', ``Select Colour'', ``Adjust Stroke Size'', and ``Share Collaboration Link''.
-    \item ``Upload PDF Document'' $\ll$include$\gg$ ``Render PDF Pages''.
-    \item ``Record Voice Note'' $\ll$include$\gg$ ``Request Microphone Permission''.
-  \end{itemize}
-  }}
-  \caption{Use Case Diagram}
-  \label{fig:4.1}
-\end{figure}
-
-\subsection{Class Diagram}
-
-\begin{figure}[htbp]
-  \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{Class Diagram Description:}\\[0.2cm]
-  The diagram shows the following classes with their attributes and methods:
-  \begin{itemize}[nosep, leftmargin=1.5em]
-    \item \textbf{User} (MongoDB Model): Attributes --- \texttt{\_id: ObjectId}, \texttt{name: String}, \texttt{email: String (unique)}, \texttt{password: String (hashed)}, \texttt{createdAt: Date}, \texttt{updatedAt: Date}. Methods --- \texttt{pre('save'): hashPassword()}, \texttt{matchPassword(entered): Boolean}.
-    \item \textbf{Board} (MongoDB Model): Attributes --- \texttt{\_id: ObjectId}, \texttt{user: ObjectId (ref: User)}, \texttt{title: String}, \texttt{mode: Enum ['standard', 'document']}, \texttt{elements: Array}, \texttt{documentUrl: String}, \texttt{annotations: Object}, \texttt{canvasPages: Object}, \texttt{voiceNotes: Array}, \texttt{collaborators: [ObjectId ref User]}, \texttt{createdAt/updatedAt: Date}.
-    \item \textbf{AuthController}: Methods --- \texttt{loginUser(req, res)}, \texttt{registerUser(req, res)}, \texttt{generateToken(id): String}.
-    \item \textbf{BoardController}: Methods --- \texttt{getBoards(req, res)}, \texttt{createBoard(req, res)}, \texttt{getBoardById(req, res)}, \texttt{updateBoard(req, res)}, \texttt{uploadDocument(req, res)}, \texttt{uploadVoiceNote(req, res)}.
-    \item \textbf{AuthMiddleware}: Methods --- \texttt{protect(req, res, next)}.
-  \end{itemize}
-  Relationships: User ``1'' $\rightarrow$ ``*'' Board (ownership). Board ``*'' $\rightarrow$ ``*'' User (collaborators). AuthController depends on User model. BoardController depends on Board model. AuthMiddleware depends on User model and jwt module.
-  }}
-  \caption{Class Diagram}
-  \label{fig:4.2}
-\end{figure}
-
-\subsection{Activity Diagram}
-
-\begin{figure}[htbp]
-  \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{Activity Diagram Description --- Real-Time Collaborative Drawing Flow:}\\[0.2cm]
-  \textbf{Start} $\rightarrow$ User opens collaboration link or navigates to board $\rightarrow$ \textbf{Decision:} Is board in collaboration/memory mode? $\rightarrow$ \textbf{[Yes]:} Initiate Socket.IO connection $\rightarrow$ Emit ``join-room'' with room ID $\rightarrow$ Server assigns name and colour $\rightarrow$ Server broadcasts ``user-joined'' $\rightarrow$ Client receives ``room-joined'' (identity + existing users) $\rightarrow$ Merge Fork: Enter Drawing Loop.
-  \textbf{[No]:} Load board from REST API $\rightarrow$ Initialise canvas with saved elements $\rightarrow$ Merge Fork: Enter Drawing Loop.
-  \textbf{Drawing Loop} (parallel swimlanes):
-  \begin{enumerate}[nosep, leftmargin=1.5em]
-    \item \textbf{Pointer Down:} Check active tool $\rightarrow$ \textbf{[Draw tool]:} Create new stroke object with \{id, tool, colour, points, options\} $\rightarrow$ \textbf{Pointer Move:} Append coalesced points to current stroke, re-render via CanvasLayer $\rightarrow$ \textbf{Pointer Up:} Simplify stroke via RDP $\rightarrow$ Push to elements array $\rightarrow$ Add pre-stroke snapshot to history $\rightarrow$ \textbf{Decision:} Is collaboration mode? $\rightarrow$ \textbf{[Yes]:} Emit ``draw-stroke'' via Socket.IO $\rightarrow$ \textbf{[Also]:} Save to DB via PUT /api/boards/:id.
-    \item \textbf{Receive Remote Stroke:} Socket ``draw-stroke'' fires $\rightarrow$ Append element to local elements array $\rightarrow$ Re-render canvas.
-    \item \textbf{Cursor Broadcast:} Every 50ms during pointer move $\rightarrow$ Emit ``cursor-move'' with world coordinates $\rightarrow$ Remote clients receive and update LiveCursors overlay.
-  \end{enumerate}
-  \textbf{Disconnect:} Socket disconnects $\rightarrow$ Server removes user from room $\rightarrow$ Broadcasts ``user-left'' $\rightarrow$ If room empty, delete room from memory $\rightarrow$ \textbf{End}.
-  }}
-  \caption{Activity Diagram --- Real-Time Collaborative Drawing}
-  \label{fig:4.3}
-\end{figure}
-
-\subsection{Sequence Diagram}
-
-\begin{figure}[htbp]
-  \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{Sequence Diagram Description --- User Drawing and Stroke Synchronisation:}\\[0.2cm]
-  Participants (lifelines from left to right): \textbf{User A (Browser)}, \textbf{React App}, \textbf{CanvasLayer}, \textbf{Socket.IO Client}, \textbf{Socket.IO Server}, \textbf{Socket.IO Client (User B)}, \textbf{User B (Browser)}.
-  \begin{enumerate}[nosep, leftmargin=1.5em]
-    \item User A presses pointer down on canvas $\rightarrow$ React App calls \texttt{handlePointerDown(e)} $\rightarrow$ \texttt{screenToWorld()} converts client coordinates to world coordinates $\rightarrow$ Creates \texttt{currentStroke} object with initial point.
-    \item User A moves pointer $\rightarrow$ React App calls \texttt{handlePointerMove(e)} (with coalesced events) $\rightarrow$ Appends points to \texttt{currentStroke.points} $\rightarrow$ CanvasLayer re-renders with \texttt{getStrokePoints()} and \texttt{renderStrokeToContext()}.
-    \item User A lifts pointer $\rightarrow$ React App calls \texttt{handlePointerUp()} $\rightarrow$ \texttt{simplifyStroke(points)} via RDP $\rightarrow$ Creates \texttt{finalStroke} $\rightarrow$ Appends to \texttt{elements[]} $\rightarrow$ Pushes snapshot to \texttt{history[]}.
-    \item React App $\rightarrow$ Socket.IO Client: \texttt{emitDrawing(roomId, finalStroke)}.
-    \item Socket.IO Client $\rightarrow$ Socket.IO Server: \texttt{emit('draw-stroke', \{roomId, element\})}.
-    \item Socket.IO Server $\rightarrow$ Socket.IO Client (User B): \texttt{broadcast('draw-stroke', element)} (to all in room except sender).
-    \item Socket.IO Client (User B) $\rightarrow$ React App (User B): Callback fires $\rightarrow$ \texttt{setElements(prev => [...prev, element])}.
-    \item React App (User B) $\rightarrow$ CanvasLayer (User B): Re-renders with new element.
-  \end{enumerate}
-  }}
-  \caption{Sequence Diagram --- Stroke Drawing and Synchronisation}
-  \label{fig:4.4}
-\end{figure}
 
 \section{DATASETS AND TECHNOLOGY STACK}
 
@@ -695,38 +523,30 @@ This chapter presents the implementation details of the Collaborative Whiteboard
 
 The application features eight distinct page-level views, each designed for a specific workflow. The key screens are described below.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{Login Page:} A centred form container with a maximum width of 400 pixels, positioned 50 pixels from the top of the viewport. The page displays a heading ``Login'' and two input fields: an email field (\texttt{type="email"}, placeholder ``Email'') and a password field (\texttt{type="password"}, placeholder ``Password''). Below the inputs is a ``Login'' submit button. At the bottom, a text prompt reads ``Don't have an account?'' with a hyperlink to the Registration page.
-  }}
+  \includegraphics[width=0.85\textwidth]{images/5.1.jpeg}
   \caption{Login Page}
   \label{fig:5.1}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{Dashboard Page:} The dashboard displays a top bar with the heading ``Workspace'', a welcome message addressing the logged-in user by name (``Welcome back, [Name]. Ready for deep work?''), a search/filter input field, and a ``New Item'' button with a plus icon. Below the header, the main content area is divided into a two-column grid layout: (1) \textbf{Canvas} column (identified by a blue dot indicator and a count badge) displaying cards for standard canvas boards, each of which can be privately used or shared for collaboration via link; and (2) \textbf{Documents} column (identified by an orange dot and label ``Documents'') displaying cards for document-mode boards. Each board card shows the board title, the last edited date, and an avatar placeholder. A dashed-border ``New Board'' button is available for quick board creation.
-  }}
+  \includegraphics[width=\textwidth]{images/5.2.jpeg}
   \caption{Dashboard Page}
   \label{fig:5.2}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{Standard Canvas:} The main drawing interface occupies the full viewport height. The top bar shows the ``DW'' brand mark, the board title, and a ``Share'' button. When the user clicks ``Share'', the board's unique URL is copied to the clipboard; anyone who opens that URL joins the same canvas in real-time, making the board collaborative automatically. A vertical toolbar is positioned on the left side at 20px from the edge, containing: Select tool, Pen tool, Fountain Pen tool, Dynamic Pen tool (default, with sparkle icon), Marker tool, Eraser tool, Voice Note button (microphone icon, pulsing animation when recording), a separator, Undo and Redo buttons, a separator, a vertical thickness slider (range 1--50), a separator, and a circular colour swatch that opens the colour wheel picker on click. When multiple users are present, the top bar additionally displays each user's assigned name and colour dot, a user count badge, and the room identifier. Live cursors of all connected remote users are rendered as coloured arrows with name label tags. When a new user joins via a shared link, their viewport automatically teleports to the first existing user's cursor position. The canvas area fills the remaining space with a configurable grid background (dot grid by default) and supports infinite pan and zoom. A zoom percentage badge is displayed at the bottom-left corner. A control cluster at the bottom-right contains Zoom In, Zoom Out, Grid Settings (opens a panel with grid type and theme options), and Pan Hand tool buttons.
-  }}
+  \includegraphics[width=\textwidth]{images/5.3.jpeg}
   \caption{Standard Canvas --- Private by Default, Collaborative via Link}
   \label{fig:5.3}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
-  \fbox{\parbox{0.85\textwidth}{\small
-  \textbf{Document Board (PDF Annotation Mode):} A split-panel layout divides the viewport into two equal halves. The left panel contains the PDF Document Viewer with page navigation controls, supporting upload of PDF files via a file input, rendering via react-pdf, and transparent overlay annotation. A floating toolbar labelled ``PDF'' (with orange accent) is anchored at the bottom-centre of the left panel, providing drawing tools, undo/redo, colour picker, and thickness slider specific to the PDF annotation layer. The right panel contains a Notes Canvas with an independent drawing surface that can operate in either ``infinite'' mode (continuous scrolling) or ``pagewise'' mode (discrete notebook pages with page navigation). A floating toolbar labelled ``Canvas'' or ``Notebook'' (with blue accent) is anchored at the bottom-centre of the right panel. Both panels support independent voice note recording and placement. Annotations are persisted per PDF page, and notebook pages are persisted independently.
-  }}
+  \includegraphics[width=\textwidth]{images/5.4.jpeg}
   \caption{Document Board --- Split-Panel PDF Annotation}
   \label{fig:5.4}
 \end{figure}
