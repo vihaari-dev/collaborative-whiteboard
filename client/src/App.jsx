@@ -6,10 +6,40 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import NewBoard from './pages/NewBoard';
 import BoardView from './pages/BoardView';
+import MemoryBoard from './pages/MemoryBoard';
+import { useLocation } from 'react-router-dom';
 
+// Redirects to /login if not authenticated
 const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
-  return user ? children : <Navigate to="/login" />;
+  return user ? children : <Navigate to="/login" replace />;
+};
+
+// Redirects logged-in users away from /login and /register
+const PublicOnlyRoute = ({ children }) => {
+  const { user } = useContext(AuthContext);
+  return user ? <Navigate to="/" replace /> : children;
+};
+
+// Root: shared collab room (no auth needed) OR dashboard (if logged in) OR login
+const RootRoute = () => {
+  const { user } = useContext(AuthContext);
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const hasRoom = queryParams.has('room');
+
+  // ?room= param → join the shared collab session directly, no login required
+  if (hasRoom) {
+    return <MemoryBoard />;
+  }
+
+  // Logged in → go to Dashboard
+  if (user) {
+    return <Dashboard />;
+  }
+
+  // Not logged in → go to Login
+  return <Navigate to="/login" replace />;
 };
 
 function App() {
@@ -17,17 +47,24 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-
           <Route
-            path="/"
+            path="/login"
             element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
+              <PublicOnlyRoute>
+                <Login />
+              </PublicOnlyRoute>
             }
           />
+          <Route
+            path="/register"
+            element={
+              <PublicOnlyRoute>
+                <Register />
+              </PublicOnlyRoute>
+            }
+          />
+
+          <Route path="/" element={<RootRoute />} />
 
           <Route
             path="/new"

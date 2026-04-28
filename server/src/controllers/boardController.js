@@ -2,6 +2,39 @@ const Board = require('../models/Board');
 const path = require('path');
 const fs = require('fs');
 
+// @desc    Upload voice note audio to board
+// @route   POST /api/boards/:id/voice
+// @access  Private
+const uploadVoiceNote = async (req, res) => {
+    try {
+        const board = await Board.findById(req.params.id);
+        if (!board) return res.status(404).json({ message: 'Board not found' });
+
+        if (!req.file) return res.status(400).json({ message: 'No audio file uploaded' });
+
+        // Convert the audio buffer to a Base64 Data URI so it can be stored directly in MongoDB
+        const base64Audio = req.file.buffer.toString('base64');
+        const dataUri = `data:${req.file.mimetype};base64,${base64Audio}`;
+
+        const note = {
+            id:        req.body.id || Date.now().toString(),
+            url:       dataUri, // Store the full base64 string instead of a local file path
+            x:         parseFloat(req.body.x)  || 0,
+            y:         parseFloat(req.body.y)  || 0,
+            label:     req.body.label          || '',
+            panel:     req.body.panel          || 'canvas', // 'canvas' | 'doc'
+            createdAt: new Date().toISOString(),
+        };
+
+        board.voiceNotes = [...(board.voiceNotes || []), note];
+        await board.save();
+        res.json(note);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error uploading voice note' });
+    }
+};
+
 // @desc    Upload document to board
 // @route   POST /api/boards/:id/upload
 // @access  Private
@@ -78,6 +111,11 @@ const updateBoard = async (req, res) => {
         if (req.body.canvasPages) {
             board.canvasPages = req.body.canvasPages;
         }
+        // Voice notes are managed through their own endpoints now
+        // but keep this for backward compatibility
+        if (req.body.voiceNotes !== undefined) {
+            board.voiceNotes = req.body.voiceNotes;
+        }
 
         const updatedBoard = await board.save();
         res.json(updatedBoard);
@@ -86,4 +124,52 @@ const updateBoard = async (req, res) => {
     }
 };
 
-module.exports = { getBoards, createBoard, getBoardById, updateBoard, uploadDocument };
+// @desc    Delete a single voice note from board
+// @route   DELETE /api/boards/:id/voice/:noteId
+// @access  Private
+const deleteVoiceNote2 = async (req, res) => {
+    try {
+        const board = await Board.findById(req.params.id);
+        if (!board) return res.status(404).json({ message: 'Board not found' });
+
+        const noteId = req.params.noteId;
+        board.voiceNotes = (board.voiceNotes || []).filter(n => n.id !== noteId);
+        await board.save();
+        res.json({ message: 'Voice note deleted', noteId });
+    } catch (err) {
+        console.error('Delete voice note error:', err.message);
+        res.status(500).json({ message: 'Server error deleting voice note' });
+    }
+};
+
+// @desc    Update voice note position
+// @route   PATCH /api/boards/:id/voice/:noteId/position
+// @access  Private
+const updateVoiceNotePosition = async (req, res) => {
+    try {
+        const board = await Board.findById(req.params.id);
+        if (!board) return res.status(404).json({ message: 'Board not found' });
+
+        const { x, y } = req.body;
+        const noteId = req.params.noteId;
+        let found = false;
+        board.voiceNotes = (board.voiceNotes || []).map(n => {
+            if (n.id === noteId) {
+                found = true;
+                return { ...n, x: parseFloat(x), y: parseFloat(y) };
+            }
+            return n;
+        });
+
+        if (!found) return res.status(404).json({ message: 'Voice note not found' });
+
+        board.markModified('voiceNotes');
+        await board.save();
+        res.json({ message: 'Position updated', noteId });
+    } catch (err) {
+        console.error('Update voice note position error:', err.message);
+        res.status(500).json({ message: 'Server error updating voice note position' });
+    }
+};
+
+module.exports = { getBoards, createBoard, getBoardById, updateBoard, uploadDocument, uploadVoiceNote, deleteVoiceNote2, updateVoiceNotePosition };

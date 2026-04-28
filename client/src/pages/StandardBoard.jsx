@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getBoard, updateBoard } from '../services/api';
+import { getBoard, updateBoard, uploadVoiceNote, deleteVoiceNoteApi, updateVoiceNotePositionApi } from '../services/api';
 import { initiateSocketConnection, disconnectSocket, joinRoom, subscribeToDrawings, emitDrawing } from '../services/socket';
 import CanvasLayer from '../components/CanvasLayer';
+import VoiceNotesLayer from '../components/VoiceNotesLayer';
+import VoiceNoteButton from '../components/VoiceNoteButton';
 import UIManager from '../components/UIManager';
 import { ColorWheelPicker } from '../components/ColorWheelPicker';
 import { CanvasSettings } from '../components/CanvasControls';
 import { useCanvasTransform } from '../hooks/useCanvasTransform';
+import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 import { TOOLS, simplifyStroke } from '../utils/StrokeUtils';
 import {
     MousePointer2, Square, Type, PenTool, Share,
@@ -80,6 +83,12 @@ const StandardBoard = () => {
     const [gridType, setGridType] = useState('dot');
     const [theme, setTheme] = useState('standard');
 
+    // Voice Notes
+    const [voiceNotes,  setVoiceNotes]  = useState([]);
+    const [pendingPin,  setPendingPin]  = useState(null); // { x, y } world coords
+    const blobPromiseRef = useRef(null);
+    const voice = useVoiceRecorder();
+
     // Canvas Transform
     const { scale, offset, zoomIn, zoomOut, setTransform, handleWheel } = useCanvasTransform();
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -122,7 +131,23 @@ const StandardBoard = () => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
                 if (uiMode === 'color_selection') setUiMode('drawing');
+                if (activeTool === 'voice' || voice.state === 'recording') {
+                    voice.cancel();
+                    setPendingPin(null);
+                    setActiveTool(TOOLS.DYNAMIC);
+                }
                 return;
+            }
+            // V = toggle voice tool
+            if (e.key === 'v' || e.key === 'V') {
+                if (!e.ctrlKey && !e.metaKey) {
+                    if (voice.state === 'recording') {
+                        handleStopVoiceNote();
+                    } else if (voice.state === 'idle') {
+                        setActiveTool(prev => prev === 'voice' ? TOOLS.DYNAMIC : 'voice');
+                    }
+                    return;
+                }
             }
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
@@ -173,6 +198,14 @@ const StandardBoard = () => {
                     const validElements = data.elements.filter(e => e.points);
                     setElements(validElements);
                 }
+                // Normalize voice notes from DB: server stores 'url', frontend uses 'audioUrl'
+                if (data.voiceNotes) {
+                    const normalized = data.voiceNotes.map(n => ({
+                        ...n,
+                        audioUrl: n.audioUrl || n.url || null,
+                    }));
+                    setVoiceNotes(normalized);
+                }
                 setLoading(false);
                 if (data.mode === 'collaboration') {
                     initiateSocketConnection();
@@ -208,21 +241,40 @@ const StandardBoard = () => {
         };
     };
 
-    const handlePointerDown = (e) => {
+    const handlePointerDown = async (e) => {
         if (uiMode === 'color_selection') return; // Block interaction on canvas
 
-        containerRef.current.setPointerCapture(e.pointerId);
         const { clientX, clientY, pressure, pointerType } = e;
         const worldPos = screenToWorld(clientX, clientY);
 
-        // 1. Pan (Middle click or Space+Drag or Hand Tool)
+        // 1. Pan
         if (activeTool === 'hand' || e.button === 1 || e.buttons === 4) {
+            containerRef.current.setPointerCapture(e.pointerId);
             isPanningRef.current = true;
             lastPointerPos.current = { x: clientX, y: clientY };
             return;
         }
 
-        // 2. Eraser
+        // 2. Voice note drop — do NOT set pointer capture here
+        if (activeTool === 'voice') {
+            if (voice.state === 'recording') {
+                handleStopVoiceNote();
+                return;
+            }
+            if (voice.state !== 'idle') return;
+            
+            setPendingPin(worldPos);
+            const started = await voice.start();
+            if(!started) {
+                setPendingPin(null);
+            }
+            return;
+        }
+
+        // Capture pointer only for drawing/erasing tools
+        containerRef.current.setPointerCapture(e.pointerId);
+
+        // 3. Eraser
         if (activeTool === TOOLS.ERASER) {
             eraseStroke(worldPos.x, worldPos.y);
             return;
@@ -300,6 +352,69 @@ const StandardBoard = () => {
         }
     };
 
+    const handleStopVoiceNote = async () => {
+        if (!pendingPin || voice.state !== 'recording') return;
+        
+        const finalDuration = voice.duration;
+        const blob = await voice.stop(); // returns blob + goes to idle
+        
+        if (!blob) { 
+            setPendingPin(null); 
+            return; 
+        }
+        
+        const noteId = Date.now().toString();
+        
+        // Upload to server — server converts to base64 and stores in Atlas
+        try {
+            const formData = new FormData();
+            formData.append('audio', blob, 'voice-note.webm');
+            formData.append('id', noteId);
+            formData.append('x', pendingPin.x);
+            formData.append('y', pendingPin.y);
+            formData.append('panel', 'canvas');
+            formData.append('label', '');
+            
+            const { data: savedNote } = await uploadVoiceNote(id, formData);
+            
+            const newNote = {
+                id: savedNote.id || noteId,
+                x: pendingPin.x,
+                y: pendingPin.y,
+                audioUrl: savedNote.url, // base64 data URI from server
+                duration: finalDuration,
+                panel: 'canvas'
+            };
+            
+            setVoiceNotes(prev => [...prev, newNote]);
+        } catch (err) {
+            console.error('[VoiceNote] Upload failed:', err);
+            // Fallback: use local blob URL so the note still works this session
+            const audioUrl = URL.createObjectURL(blob);
+            const newNote = {
+                id: noteId,
+                x: pendingPin.x,
+                y: pendingPin.y,
+                audioUrl,
+                duration: finalDuration,
+                panel: 'canvas'
+            };
+            setVoiceNotes(prev => [...prev, newNote]);
+        }
+        
+        setPendingPin(null);
+    };
+
+    const handleUpdateNotePos = (noteId, newX, newY) => {
+        setVoiceNotes(prev => prev.map(n => 
+            n.id === noteId ? { ...n, x: newX, y: newY } : n
+        ));
+        // Lightweight position update — no base64 data sent
+        updateVoiceNotePositionApi(id, noteId, newX, newY).catch(err => {
+            console.error('[VoiceNote] Position update failed:', err);
+        });
+    };
+
     if (loading) return <div>Loading...</div>;
     if (!board) return <div>Board not found</div>;
 
@@ -336,6 +451,11 @@ const StandardBoard = () => {
                                 <div title="Dynamic Pen"><ToolbarButton icon={Sparkles} active={activeTool === TOOLS.DYNAMIC} onClick={() => setActiveTool(TOOLS.DYNAMIC)} /></div>
                                 <div title="Marker"><ToolbarButton icon={Square} active={activeTool === TOOLS.MARKER} onClick={() => setActiveTool(TOOLS.MARKER)} /></div>
                                 <div title="Eraser"><ToolbarButton icon={Square} active={activeTool === TOOLS.ERASER} onClick={() => setActiveTool(TOOLS.ERASER)} /></div>
+                                <VoiceNoteButton 
+                                    active={activeTool === 'voice'} 
+                                    recording={voice.state === 'recording'}
+                                    onClick={() => setActiveTool(prev => prev === 'voice' ? TOOLS.DYNAMIC : 'voice')} 
+                                />
 
                                 <div style={{ height: '1px', background: '#eee', margin: '4px 0' }} />
                                 <ToolbarButton icon={Undo} onClick={handleUndo} />
@@ -444,6 +564,36 @@ const StandardBoard = () => {
                     width={dimensions.width}
                     height={dimensions.height}
                 />
+                <VoiceNotesLayer
+                    voiceNotes={voiceNotes}
+                    scale={scale}
+                    offset={offset}
+                    pendingPin={pendingPin}
+                    isRecording={voice.state === 'recording'}
+                    recDuration={voice.duration}
+                    onStopRecording={handleStopVoiceNote}
+                    onDeleteNote={(noteId) => {
+                        setVoiceNotes(prev => prev.filter(n => n.id !== noteId));
+                        // Lightweight delete — no base64 data sent
+                        deleteVoiceNoteApi(id, noteId).catch(err => {
+                            console.error('[VoiceNote] Delete failed:', err);
+                        });
+                    }}
+                    onUpdateNotePos={handleUpdateNotePos}
+                    panel="canvas"
+                />
+                
+                {/* Global Error Toast for Mic Permission */}
+                {voice.error && (
+                    <div style={{
+                        position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
+                        background: '#FEE2E2', color: '#991B1B', padding: '12px 24px', 
+                        borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        fontWeight: 500, zIndex: 9999, pointerEvents: 'none'
+                    }}>
+                        {voice.error}
+                    </div>
+                )}
             </div>
         </div>
     );

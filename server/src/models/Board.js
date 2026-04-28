@@ -32,6 +32,10 @@ const boardSchema = new mongoose.Schema({
         type: Object, // Map of pageIndex -> elements array (Right Side Notes)
         default: {},
     },
+    voiceNotes: {
+        type: Array, // [{ id, url, x, y, label, createdAt, panel }]
+        default: [],
+    },
     collaborators: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

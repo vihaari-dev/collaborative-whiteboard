@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import CanvasLayer from './CanvasLayer';
+import VoiceNotesLayer from './VoiceNotesLayer';
 import { useCanvasTransform } from '../hooks/useCanvasTransform';
 import { ChevronLeft, ChevronRight, Upload, ZoomIn, ZoomOut } from 'lucide-react';
 import { uploadDocument } from '../services/api';
@@ -35,6 +36,10 @@ const DocumentViewer = ({
     page,
     setPage,
     onStrokeEnd,     // (newElements) => void — called to persist finished strokes
+    voiceNotes = [],
+    pendingPin = null,
+    onVoiceDrop,
+    onDeleteVoiceNote,
 }) => {
     const [numPages, setNumPages] = useState(null);
     const containerRef = useRef(null);
@@ -69,7 +74,7 @@ const DocumentViewer = ({
         const rect = containerRef.current.getBoundingClientRect();
         return {
             x: (clientX - rect.left - offset.x) / scale,
-            y: (clientY - rect.top  - offset.y) / scale,
+            y: (clientY - rect.top - offset.y) / scale,
         };
     };
 
@@ -80,6 +85,13 @@ const DocumentViewer = ({
 
         containerRef.current.setPointerCapture(e.pointerId);
         const { clientX, clientY, pressure } = e;
+
+        // Voice note drop
+        if (logic.state.activeTool === 'voice') {
+            const wp = screenToWorld(clientX, clientY);
+            if (onVoiceDrop) onVoiceDrop(wp);
+            return;
+        }
 
         if (logic.state.activeTool === 'hand' || e.button === 1) {
             logic.refs.isPanningRef.current = true;
@@ -225,7 +237,16 @@ const DocumentViewer = ({
                     position: 'relative',
                     overflow: 'hidden',
                     touchAction: 'none',
-                    cursor: logic.state.activeTool === 'hand' ? 'grab' : 'crosshair',
+                    cursor: ({
+                    hand:     'grab',
+                    select:   'default',
+                    eraser:   'cell',
+                    pen:      'crosshair',
+                    dynamic:  'crosshair',
+                    fountain: 'crosshair',
+                    marker:   'crosshair',
+                    pencil:   'crosshair',
+                })[logic.state.activeTool] ?? 'crosshair',
                 }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -291,16 +312,7 @@ const DocumentViewer = ({
                             </Document>
                         </div>
 
-                        {/*
-                         * ── Annotation Canvas (SIBLING overlay, covers full container) ──
-                         *
-                         * Lives OUTSIDE the transformed PDF div so it fills the full container.
-                         * Receives the real scale + offset so its internal coordinate transform
-                         * matches the pointer-event world-coordinate math above exactly.
-                         *
-                         * Strokes read from logic.state.elements (live) so they persist after
-                         * mouse release without needing annotations[page] to be updated first.
-                         */}
+                        {/* Annotation Canvas overlay */}
                         <div style={{
                             position: 'absolute', top: 0, left: 0,
                             width: '100%', height: '100%',
@@ -316,6 +328,17 @@ const DocumentViewer = ({
                                 disableGrid={true}
                             />
                         </div>
+
+                        {/* PDF-panel voice note pins */}
+                        <VoiceNotesLayer
+                            voiceNotes={voiceNotes}
+                            scale={scale}
+                            offset={offset}
+                            pendingPin={pendingPin}
+                            recDuration={0}
+                            onDeleteNote={onDeleteVoiceNote || (() => {})}
+                            panel="doc"
+                        />
                     </>
                 )}
             </div>

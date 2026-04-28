@@ -27,4 +27,14 @@ export const uploadDocument = (id, formData) => API.post(`/boards/${id}/upload`,
     },
 });
 
+export const uploadVoiceNote = (id, formData) => API.post(`/boards/${id}/voice`, formData, {
+    headers: {
+        'Content-Type': 'multipart/form-data',
+    },
+});
+
+export const deleteVoiceNoteApi = (boardId, noteId) => API.delete(`/boards/${boardId}/voice/${noteId}`);
+
+export const updateVoiceNotePositionApi = (boardId, noteId, x, y) => API.patch(`/boards/${boardId}/voice/${noteId}/position`, { x, y });
+
 export default API;

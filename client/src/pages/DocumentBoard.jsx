@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getBoard, updateBoard } from '../services/api';
+import { getBoard, updateBoard, uploadVoiceNote } from '../services/api';
 import { initiateSocketConnection, disconnectSocket, joinRoom, subscribeToDrawings, emitDrawing } from '../services/socket';
 import UIManager from '../components/UIManager';
 import { ColorWheelPicker } from '../components/ColorWheelPicker';
+import VoiceNotesLayer from '../components/VoiceNotesLayer';
 import { useCanvasTransform } from '../hooks/useCanvasTransform';
 import { useWhiteboardLogic } from '../hooks/useWhiteboardLogic';
+import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 import DocumentViewer from '../components/DocumentViewer';
 import RightPanel from '../components/RightPanel';
 import { TOOLS } from '../utils/StrokeUtils';
-import { MousePointer2, Square, PenTool, Share, ChevronRight, Hand, Eraser, Undo2, Redo2 } from 'lucide-react';
+import { MousePointer2, Square, PenTool, Share, ChevronRight, Hand, Eraser, Undo2, Redo2, Pencil, Highlighter, Mic } from 'lucide-react';
 import '../styles/grids.css';
 
 // ── Toolbar ─────────────────────────────────────────────────────────────────
@@ -33,37 +35,109 @@ const TopBar = ({ title, mode }) => (
     </div>
 );
 
-const Btn = ({ icon: Icon, active, color, onClick, title: tip }) => (
-    <button title={tip} onClick={onClick} onPointerDown={e => e.stopPropagation()}
-        style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: active ? (color || '#EBF5FF') : 'transparent', color: active ? '#0066FF' : '#666', borderRadius: 6, cursor: 'pointer', transition: 'all 0.15s' }}>
-        <Icon size={16} />
+// Cursor mapping per tool
+const getCursor = (tool) => ({
+    hand:     'grab',
+    select:   'default',
+    eraser:   'cell',
+    pen:      'crosshair',
+    dynamic:  'crosshair',
+    fountain: 'crosshair',
+    marker:   'crosshair',
+    pencil:   'crosshair',
+})[tool] ?? 'crosshair';
+
+const Btn = ({ icon: Icon, active, activeColor, onClick, title }) => (
+    <button
+        title={title}
+        onClick={onClick}
+        onPointerDown={e => e.stopPropagation()}
+        style={{
+            width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: 'none',
+            background: active ? (activeColor ? activeColor + '22' : '#EBF5FF') : 'transparent',
+            color: active ? (activeColor || '#0066FF') : '#555',
+            borderRadius: 6, cursor: 'pointer',
+            transition: 'background 0.12s, color 0.12s',
+            flexShrink: 0,
+        }}
+    >
+        <Icon size={14} />
     </button>
 );
 
-const FloatingToolbar = ({ logic, onColorClick, title, accentColor }) => (
-    <div style={{ background: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', display: 'flex', gap: 6, alignItems: 'center', border: `2px solid ${accentColor}` }}>
-        <div style={{ fontSize: 9, color: accentColor, fontWeight: 800, writingMode: 'vertical-rl', transform: 'rotate(180deg)', letterSpacing: '0.08em' }}>{title}</div>
-        <div style={{ width: 1, height: 28, background: '#eee' }} />
+const Sep = () => <div style={{ width: 1, height: 20, background: '#E8E8E8', flexShrink: 0 }} />;
 
-        {/* Undo / Redo */}
-        <Btn tip="Undo (Ctrl+Z)"         icon={Undo2} active={false} onClick={logic.actions.handleUndo} />
-        <Btn tip="Redo (Ctrl+Shift+Z)"   icon={Redo2} active={false} onClick={logic.actions.handleRedo} />
-        <div style={{ width: 1, height: 28, background: '#eee' }} />
-
-        <Btn tip="Select"   icon={MousePointer2} active={logic.state.activeTool === 'select'}        onClick={() => logic.actions.setActiveTool('select')} />
-        <Btn tip="Pan"      icon={Hand}          active={logic.state.activeTool === 'hand'}          onClick={() => logic.actions.setActiveTool('hand')} />
-        <Btn tip="Pen"      icon={PenTool}       active={logic.state.activeTool === TOOLS.PEN}       onClick={() => logic.actions.setActiveTool(TOOLS.PEN)} />
-        <Btn tip="Marker"   icon={Square}        active={logic.state.activeTool === TOOLS.MARKER}    onClick={() => logic.actions.setActiveTool(TOOLS.MARKER)} color="#FEF3C7" />
-        <Btn tip="Eraser"   icon={Eraser}        active={logic.state.activeTool === TOOLS.ERASER}    onClick={() => logic.actions.setActiveTool(TOOLS.ERASER)} />
-        <div style={{ width: 1, height: 28, background: '#eee' }} />
-        <button onPointerDown={e => e.stopPropagation()} onClick={onColorClick}
-            style={{ width: 22, height: 22, borderRadius: '50%', background: logic.state.activeColor, border: '2px solid #E5E5E5', cursor: 'pointer', flexShrink: 0 }} />
-        <input type="range" min="1" max="20" value={logic.state.activeSize}
+const FloatingToolbar = ({ logic, onColorClick, title, accentColor }) => {
+    const t = logic.state.activeTool;
+    return (
+        <div
             onPointerDown={e => e.stopPropagation()}
-            onChange={e => logic.actions.setActiveSize(parseInt(e.target.value))}
-            style={{ width: 56 }} />
-    </div>
-);
+            style={{
+                background: 'white',
+                padding: '4px 8px',
+                borderRadius: 10,
+                boxShadow: '0 2px 16px rgba(0,0,0,0.10), 0 0 0 1.5px ' + accentColor + '55',
+                display: 'flex', gap: 2, alignItems: 'center',
+                borderLeft: `3px solid ${accentColor}`,
+                pointerEvents: 'auto',
+                userSelect: 'none',
+            }}
+        >
+            {/* Label dot */}
+            <span style={{
+                fontSize: 8, color: accentColor, fontWeight: 800,
+                textTransform: 'uppercase', letterSpacing: '0.1em',
+                paddingRight: 4, whiteSpace: 'nowrap',
+            }}>{title}</span>
+
+            <Sep />
+
+            {/* History */}
+            <Btn title="Undo (Ctrl+Z)"       icon={Undo2}        active={false} onClick={logic.actions.handleUndo} />
+            <Btn title="Redo (Ctrl+Shift+Z)" icon={Redo2}        active={false} onClick={logic.actions.handleRedo} />
+
+            <Sep />
+
+            {/* Tools */}
+            <Btn title="Select"     icon={MousePointer2} active={t === 'select'}        onClick={() => logic.actions.setActiveTool('select')}        activeColor={accentColor} />
+            <Btn title="Pan"        icon={Hand}          active={t === 'hand'}          onClick={() => logic.actions.setActiveTool('hand')}          activeColor={accentColor} />
+            <Btn title="Pen"        icon={PenTool}       active={t === TOOLS.PEN}       onClick={() => logic.actions.setActiveTool(TOOLS.PEN)}       activeColor={accentColor} />
+            <Btn title="Dynamic"    icon={Pencil}        active={t === TOOLS.DYNAMIC}   onClick={() => logic.actions.setActiveTool(TOOLS.DYNAMIC)}   activeColor={accentColor} />
+            <Btn title="Marker"     icon={Highlighter}   active={t === TOOLS.MARKER}    onClick={() => logic.actions.setActiveTool(TOOLS.MARKER)}    activeColor="#F59E0B" />
+            <Btn title="Shape"      icon={Square}        active={t === 'shape'}         onClick={() => logic.actions.setActiveTool('shape')}         activeColor={accentColor} />
+            <Btn title="Eraser"     icon={Eraser}        active={t === TOOLS.ERASER}    onClick={() => logic.actions.setActiveTool(TOOLS.ERASER)}    activeColor="#EF4444" />
+            <Btn title="Voice (V)"  icon={Mic}           active={t === 'voice'}         onClick={() => logic.actions.setActiveTool(t === 'voice' ? TOOLS.DYNAMIC : 'voice')} activeColor="#8B5CF6" />
+
+            <Sep />
+
+            {/* Color swatch */}
+            <button
+                title="Pick color"
+                onPointerDown={e => e.stopPropagation()}
+                onClick={onColorClick}
+                style={{
+                    width: 18, height: 18, borderRadius: '50%',
+                    background: logic.state.activeColor,
+                    border: '2px solid #E0E0E0',
+                    cursor: 'pointer', flexShrink: 0,
+                    boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
+                }}
+            />
+
+            {/* Thickness */}
+            <input
+                type="range" min="1" max="20"
+                value={logic.state.activeSize}
+                title={`Thickness: ${logic.state.activeSize}`}
+                onPointerDown={e => e.stopPropagation()}
+                onChange={e => logic.actions.setActiveSize(parseInt(e.target.value))}
+                style={{ width: 52, accentColor, cursor: 'pointer' }}
+            />
+        </div>
+    );
+};
 
 // ── DocumentBoard ────────────────────────────────────────────────────────────
 
@@ -93,8 +167,56 @@ const DocumentBoard = () => {
     const [uiMode,  setUiMode]  = useState('drawing');
     const [cpTarget, setCpTarget] = useState('main');
 
+    // Voice Notes (shared across both panels)
+    const [voiceNotes,    setVoiceNotes]    = useState([]);
+    const [pendingDocPin, setPendingDocPin] = useState(null);
+    const [pendingMainPin,setPendingMainPin]= useState(null);
+    const voice = useVoiceRecorder();
+
     const { scale, offset, setTransform, handleWheel } = useCanvasTransform();
     const [dimensions, setDimensions] = useState({ width: window.innerWidth / 2, height: window.innerHeight });
+
+    // Helpers to stop and save voice notes per panel
+    const stopAndUploadVoice = async (panel, pinPos, clearPinFunc) => {
+        const finalDuration = voice.duration;
+        const blob = await voice.stop();
+        if (!blob) {
+            clearPinFunc(null);
+            voice.markUploaded();
+            return;
+        }
+
+        const noteId = Date.now().toString();
+        const fd = new FormData();
+        fd.append('audio', blob, `voice-${noteId}.webm`);
+        fd.append('id',    noteId);
+        fd.append('x',     pinPos.x.toString());
+        fd.append('y',     pinPos.y.toString());
+        fd.append('panel', panel);
+
+        try {
+            const { data: savedNote } = await uploadVoiceNote(id, fd);
+            const newNote = { ...savedNote, duration: finalDuration };
+            const updated = [...voiceNotes, newNote];
+            setVoiceNotes(updated);
+            updateBoard(id, { voiceNotes: updated });
+        } catch (err) {
+            console.error(`Voice upload error (${panel}):`, err);
+        } finally {
+            clearPinFunc(null);
+            voice.markUploaded();
+        }
+    };
+
+    const handleStopDocVoice = useCallback(() => {
+        if (!pendingDocPin || voice.state !== 'recording') return;
+        stopAndUploadVoice('doc', pendingDocPin, setPendingDocPin);
+    }, [pendingDocPin, voice, voiceNotes]);
+
+    const handleStopMainVoice = useCallback(() => {
+        if (!pendingMainPin || voice.state !== 'recording') return;
+        stopAndUploadVoice('canvas', pendingMainPin, setPendingMainPin);
+    }, [pendingMainPin, voice, voiceNotes]);
 
     // Refs to avoid stale closures in callbacks ──────────────────────────────
     const canvasModeRef  = useRef(canvasMode);
@@ -116,14 +238,27 @@ const DocumentBoard = () => {
         const handler = (e) => {
             const isUndo = (e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && !e.shiftKey;
             const isRedo = (e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && e.shiftKey;
-            if (!isUndo && !isRedo) return;
+            if (!isUndo && !isRedo && e.code !== 'KeyV') return;
 
             // Don't intercept when user is typing in an input / textarea
             const tag = document.activeElement?.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-            e.preventDefault();
             const logic = activePanelRef.current === 'doc' ? docLogic : mainLogic;
+
+            if (e.code === 'KeyV') {
+                if (!e.ctrlKey && !e.metaKey) {
+                    if (voice.state === 'recording') {
+                        if (pendingDocPin) handleStopDocVoice();
+                        if (pendingMainPin) handleStopMainVoice();
+                    } else if (voice.state === 'idle') {
+                        logic.actions.setActiveTool(prev => prev === 'voice' ? TOOLS.DYNAMIC : 'voice');
+                    }
+                }
+                return;
+            }
+
+            e.preventDefault();
             if (isUndo) logic.actions.handleUndo();
             if (isRedo) logic.actions.handleRedo();
         };
@@ -151,6 +286,7 @@ const DocumentBoard = () => {
                     const max = Math.max(...Object.keys(data.canvasPages).map(Number), 1);
                     setTotalCanvasPages(max);
                 }
+                if (data.voiceNotes) setVoiceNotes(data.voiceNotes);
 
                 if (data.mode === 'collaboration' || data.mode === 'document') {
                     initiateSocketConnection();
@@ -268,16 +404,32 @@ const DocumentBoard = () => {
                     <div style={{ pointerEvents: 'auto' }}><TopBar title={board?.title || 'Document'} mode={board?.mode} /></div>
                 </motion.div>
 
-                {/* PDF toolbar (bottom-centre of left half) */}
-                <div style={{ position: 'absolute', bottom: 30, left: '25%', transform: 'translateX(-50%)', zIndex: 40 }}>
-                    <FloatingToolbar logic={docLogic}  accentColor="#FF9500" title="PDF"
-                        onColorClick={() => { setUiMode('color_selection'); setCpTarget('doc'); }} />
+                {/* PDF toolbar — pill anchored to bottom-centre of left panel */}
+                <div style={{
+                    position: 'absolute', bottom: 20, left: '25%',
+                    transform: 'translateX(-50%)', zIndex: 40,
+                    pointerEvents: 'auto',
+                }}>
+                    <FloatingToolbar
+                        logic={docLogic}
+                        accentColor="#FF9500"
+                        title="PDF"
+                        onColorClick={() => { setUiMode('color_selection'); setCpTarget('doc'); }}
+                    />
                 </div>
 
-                {/* Canvas toolbar (bottom-centre of right half) */}
-                <div style={{ position: 'absolute', bottom: 30, left: '75%', transform: 'translateX(-50%)', zIndex: 40 }}>
-                    <FloatingToolbar logic={mainLogic} accentColor="#0066FF" title={canvasMode === 'infinite' ? 'Canvas' : 'Notebook'}
-                        onColorClick={() => { setUiMode('color_selection'); setCpTarget('main'); }} />
+                {/* Canvas toolbar — pill anchored to bottom-centre of right panel */}
+                <div style={{
+                    position: 'absolute', bottom: 20, left: '75%',
+                    transform: 'translateX(-50%)', zIndex: 40,
+                    pointerEvents: 'auto',
+                }}>
+                    <FloatingToolbar
+                        logic={mainLogic}
+                        accentColor="#0066FF"
+                        title={canvasMode === 'infinite' ? 'Canvas' : 'Notebook'}
+                        onColorClick={() => { setUiMode('color_selection'); setCpTarget('main'); }}
+                    />
                 </div>
 
                 <AnimatePresence>
@@ -311,11 +463,29 @@ const DocumentBoard = () => {
                         page={docPage}
                         setPage={handleDocPageChange}
                         onStrokeEnd={handleDocStrokeEnd}
+                        voiceNotes={voiceNotes}
+                        voice={voice}
+                        pendingPin={pendingDocPin}
+                        onVoiceDrop={async (worldPos) => {
+                            if (voice.state === 'recording' || voice.state === 'uploading') return;
+                            if (voice.state !== 'idle') return;
+                            setPendingDocPin(worldPos);
+                            const started = await voice.start();
+                            if (!started) {
+                                setPendingDocPin(null);
+                                voice.markUploaded();
+                            }
+                        }}
+                        onDeleteVoiceNote={(noteId) => {
+                            const updated = voiceNotes.filter(n => n.id !== noteId);
+                            setVoiceNotes(updated);
+                            updateBoard(id, { voiceNotes: updated });
+                        }}
                     />
                 </div>
 
                 {/* Right: Notes Panel */}
-                <div style={{ width: '50%', height: '100%', borderLeft: '1px solid #ddd' }}
+                <div style={{ width: '50%', height: '100%', borderLeft: '1px solid #ddd', position: 'relative' }}
                     onPointerDown={() => { activePanelRef.current = 'main'; }}>
                     <RightPanel
                         logic={mainLogic}
@@ -326,6 +496,16 @@ const DocumentBoard = () => {
                         totalCanvasPages={totalCanvasPages}
                         onAddPage={handleAddPage}
                         onStrokeEnd={handleRightStrokeEnd}
+                        onVoiceDrop={async (worldPos) => {
+                            if (voice.state === 'recording' || voice.state === 'uploading') return;
+                            if (voice.state !== 'idle') return;
+                            setPendingMainPin(worldPos);
+                            const started = await voice.start();
+                            if (!started) {
+                                setPendingMainPin(null);
+                                voice.markUploaded();
+                            }
+                        }}
                         scale={scale}
                         offset={offset}
                         handleWheel={handleWheel}
@@ -333,6 +513,22 @@ const DocumentBoard = () => {
                         dimensions={dimensions}
                         gridType={mainLogic.state.gridType}
                         theme={mainLogic.state.theme}
+                    />
+                    {/* Canvas-side voice notes overlay */}
+                    <VoiceNotesLayer
+                        voiceNotes={voiceNotes}
+                        scale={scale}
+                        offset={offset}
+                        pendingPin={pendingMainPin}
+                        recDuration={voice.duration}
+                        isUploading={voice.state === 'uploading'}
+                        onStopRecording={handleStopMainVoice}
+                        onDeleteNote={(noteId) => {
+                            const updated = voiceNotes.filter(n => n.id !== noteId);
+                            setVoiceNotes(updated);
+                            updateBoard(id, { voiceNotes: updated });
+                        }}
+                        panel="canvas"
                     />
                 </div>
             </div>
