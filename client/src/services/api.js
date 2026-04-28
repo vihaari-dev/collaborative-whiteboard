@@ -15,6 +15,22 @@ API.interceptors.request.use((req) => {
     return req;
 });
 
+// Handle 401 Unauthorized globally
+API.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            // Token is invalid or expired
+            localStorage.removeItem('user');
+            // If we are not already on the login page, redirect
+            if (window.location.pathname !== '/login') {
+                window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const login = (formData) => API.post('/auth/login', formData);
 export const register = (formData) => API.post('/auth/register', formData);
 

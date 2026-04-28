@@ -12,8 +12,10 @@ const Register = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const from = location.state?.from?.pathname || location.state?.from?.search ? 
-                 (location.state?.from?.pathname + (location.state?.from?.search || '')) : '/';
+    const queryParams = new URLSearchParams(location.search);
+    const redirectParam = queryParams.get('redirect');
+    const fromState = location.state?.from?.pathname ? (location.state.from.pathname + (location.state.from.search || '')) : null;
+    const from = redirectParam || fromState || '/';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
