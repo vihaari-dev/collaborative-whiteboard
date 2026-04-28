@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const baseURL = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
+
 const API = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL,
 });
 
 // Add token to requests if it exists

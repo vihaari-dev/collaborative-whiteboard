@@ -291,7 +291,7 @@ const DocumentViewer = ({
                             }}
                         >
                             <Document
-                                file={`http://localhost:5000${documentUrl}`}
+                                file={import.meta.env.PROD ? documentUrl : `http://localhost:5000${documentUrl}`}
                                 onLoadSuccess={onDocumentLoadSuccess}
                                 loading={
                                     <div style={{

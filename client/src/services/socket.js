@@ -13,7 +13,8 @@ export const initiateSocketConnection = () => {
     // Discard stale disconnected socket
     if (socket) socket = null;
 
-    socket = io('http://localhost:5000', { autoConnect: true });
+    const url = import.meta.env.PROD ? undefined : 'http://localhost:5000';
+    socket = io(url, { autoConnect: true });
     return socket;
 };
 

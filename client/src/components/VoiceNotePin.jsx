@@ -36,7 +36,7 @@ const VoiceNotePin = ({ note, onDelete, isRecording = false, recDuration = 0, on
 
         // If it's a local /uploads path, prepend server origin. Data URIs and blob URLs work as-is.
         const src = audioSrc.startsWith('/uploads')
-            ? `http://localhost:5000${audioSrc}`
+            ? (import.meta.env.PROD ? audioSrc : `http://localhost:5000${audioSrc}`)
             : audioSrc;
 
         if (!audioRef.current) {
