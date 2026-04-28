@@ -1,9 +1,22 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getBoard, updateBoard, uploadVoiceNote, deleteVoiceNoteApi, updateVoiceNotePositionApi } from '../services/api';
-import { initiateSocketConnection, disconnectSocket, joinRoom, subscribeToDrawings, emitDrawing } from '../services/socket';
+import {
+    initiateSocketConnection,
+    disconnectSocket,
+    joinRoom,
+    subscribeToDrawings,
+    emitDrawing,
+    emitCursorMove,
+    subscribeToCursors,
+    subscribeToUserCount,
+    subscribeToUserJoined,
+    subscribeToUserLeft,
+    cleanupRoomListeners
+} from '../services/socket';
 import CanvasLayer from '../components/CanvasLayer';
+import LiveCursors from '../components/LiveCursors';
 import VoiceNotesLayer from '../components/VoiceNotesLayer';
 import VoiceNoteButton from '../components/VoiceNoteButton';
 import UIManager from '../components/UIManager';
@@ -14,12 +27,12 @@ import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 import { TOOLS, simplifyStroke } from '../utils/StrokeUtils';
 import {
     MousePointer2, Square, Type, PenTool, Share,
-    ChevronRight, ZoomIn, ZoomOut, Hand, Grid, Palette, Undo, Redo, Sparkles
+    ChevronRight, ZoomIn, ZoomOut, Hand, Grid, Palette, Undo, Redo, Sparkles, Users
 } from 'lucide-react';
 import '../styles/grids.css';
 
 // --- Toolbar Components ---
-const TopBar = ({ title, mode }) => (
+const TopBar = ({ title, mode, userCount, onShare }) => (
     <div style={{
         height: '60px',
         borderBottom: '1px solid #E5E5E5',
@@ -44,9 +57,21 @@ const TopBar = ({ title, mode }) => (
                 </div>
             </div>
         </div>
-        <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '13px' }}>
-            <Share size={14} /> Share
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {mode === 'collaboration' && userCount !== undefined && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    fontSize: '13px', color: '#666',
+                    background: '#F5F5F7', padding: '6px 10px', borderRadius: '8px',
+                }}>
+                    <Users size={14} />
+                    <span>{userCount}</span>
+                </div>
+            )}
+            <button className="btn btn-primary" onClick={onShare} style={{ padding: '8px 16px', fontSize: '13px' }}>
+                <Share size={14} /> Share
+            </button>
+        </div>
     </div>
 );
 
@@ -96,6 +121,34 @@ const StandardBoard = () => {
     // --- Undo/Redo State ---
     const [history, setHistory] = useState([]);
     const [redoStack, setRedoStack] = useState([]);
+
+    // --- Collaboration State ---
+    const [userCount, setUserCount] = useState(1);
+    const [remoteCursors, setRemoteCursors] = useState({});
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const lastCursorEmit = useRef(0);
+    const roomIdRef = useRef(id);
+
+    const toast = (msg, duration = 3000) => {
+        setToastMessage(msg);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), duration);
+    };
+
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href);
+        toast('Link copied to clipboard! 🔗');
+    };
+
+    const navigateToCursor = useCallback((worldX, worldY) => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        setTransform(scale, {
+            x: rect.width / 2 - worldX * scale,
+            y: rect.height / 2 - worldY * scale,
+        });
+    }, [scale, setTransform]);
 
     const addToHistory = (elementsSnapshot) => {
         setHistory(prev => [...prev, elementsSnapshot]);
@@ -209,9 +262,39 @@ const StandardBoard = () => {
                 setLoading(false);
                 if (data.mode === 'collaboration') {
                     initiateSocketConnection();
-                    joinRoom(id);
+                    
                     subscribeToDrawings((newElement) => {
                         setElements((prev) => [...prev, newElement]);
+                    });
+                    
+                    subscribeToCursors(({ id, name, color, x, y }) => {
+                        setRemoteCursors(prev => ({ ...prev, [id]: { id, name, color, x, y } }));
+                    });
+
+                    subscribeToUserCount((count) => setUserCount(count));
+
+                    subscribeToUserJoined((user) => {
+                        setRemoteCursors(prev => ({ ...prev, [user.id]: { ...user } }));
+                    });
+
+                    subscribeToUserLeft((socketId) => {
+                        setRemoteCursors(prev => {
+                            const next = { ...prev };
+                            delete next[socketId];
+                            return next;
+                        });
+                    });
+
+                    // Join room callback
+                    joinRoom(id, (joinData) => {
+                        if (joinData && joinData.count) {
+                            setUserCount(joinData.count);
+                        }
+                        if (joinData && joinData.users) {
+                            const initial = {};
+                            joinData.users.forEach(u => { initial[u.id] = u; });
+                            setRemoteCursors(initial);
+                        }
                     });
                 }
             } catch (error) {
@@ -220,7 +303,10 @@ const StandardBoard = () => {
             }
         };
         fetchBoard();
-        return () => disconnectSocket();
+        return () => {
+            cleanupRoomListeners();
+            disconnectSocket();
+        };
     }, [id]);
 
     useLayoutEffect(() => {
@@ -298,6 +384,13 @@ const StandardBoard = () => {
 
         const { clientX, clientY, pressure, pointerType } = e;
         const worldPos = screenToWorld(clientX, clientY);
+
+        // Throttled cursor broadcast
+        const now = Date.now();
+        if (roomIdRef.current && now - lastCursorEmit.current > 50) {
+            lastCursorEmit.current = now;
+            emitCursorMove(roomIdRef.current, worldPos.x, worldPos.y);
+        }
 
         // Pan
         if (isPanningRef.current) {
@@ -435,7 +528,12 @@ const StandardBoard = () => {
                             style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 50, pointerEvents: 'none' }}
                         >
                             <div style={{ pointerEvents: 'auto' }}>
-                                <TopBar title={board.title} mode={board.mode} />
+                                <TopBar 
+                                    title={board.title} 
+                                    mode={board.mode} 
+                                    userCount={userCount}
+                                    onShare={handleShare}
+                                />
                             </div>
 
                             {/* Tools Palette */}
@@ -583,6 +681,15 @@ const StandardBoard = () => {
                     panel="canvas"
                 />
                 
+                {/* Live cursors overlay */}
+                <LiveCursors
+                    cursors={remoteCursors}
+                    scale={scale}
+                    offset={offset}
+                    containerSize={dimensions}
+                    onNavigateTo={navigateToCursor}
+                />
+                
                 {/* Global Error Toast for Mic Permission */}
                 {voice.error && (
                     <div style={{
@@ -595,6 +702,30 @@ const StandardBoard = () => {
                     </div>
                 )}
             </div>
+
+            {/* ── Toast ── */}
+            <AnimatePresence>
+                {showToast && (
+                    <motion.div
+                        key="toast"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        transition={{ duration: 0.25 }}
+                        style={{
+                            position: 'fixed', bottom: '40px', left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: '#1A1A1A', color: 'white',
+                            padding: '12px 24px', borderRadius: '10px', zIndex: 200,
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                            fontSize: '13px', fontWeight: '500', whiteSpace: 'nowrap',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        {toastMessage}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
