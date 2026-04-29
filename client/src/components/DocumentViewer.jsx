@@ -142,17 +142,13 @@ const DocumentViewer = ({
         if (newElements && onStrokeEnd) onStrokeEnd(newElements);
     };
 
-    const handleUpload = async (e) => {
+    const handleUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const formData = new FormData();
-        formData.append('document', file);
-        try {
-            const { data } = await uploadDocument(boardId, formData);
-            onUpload(data.documentUrl);
-        } catch (err) {
-            console.error(err);
-        }
+        
+        // Use local object URL for non-persistent demonstration
+        const localUrl = URL.createObjectURL(file);
+        onUpload(localUrl);
     };
 
     const pdfWidth = containerSize.width > 0 ? containerSize.width * 0.9 : 600;
@@ -291,7 +287,7 @@ const DocumentViewer = ({
                             }}
                         >
                             <Document
-                                file={import.meta.env.PROD ? documentUrl : `http://localhost:5000${documentUrl}`}
+                                file={documentUrl.startsWith('blob:') ? documentUrl : (import.meta.env.PROD ? documentUrl : `http://localhost:5000${documentUrl}`)}
                                 onLoadSuccess={onDocumentLoadSuccess}
                                 loading={
                                     <div style={{
